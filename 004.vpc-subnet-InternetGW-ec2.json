@@ -1,0 +1,133 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters" : {
+    "KeyFile": {
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "Description": "Select Keypair for the Instance"
+    },
+    "InstanceType": {
+      "Type": "String",
+      "Description": "Select Instance type",
+      "AllowedValues" : ["t2.micro", "m1.small", "m1.large"],
+      "Description" : "Enter t2.micro, m1.small, or m1.large. Default is t2.micro."
+    }
+  },
+  "Resources": {
+    "myVPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "192.168.0.0/16",
+        "InstanceTenancy": "default",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "MyVPC"
+          },
+          {
+            "Key": "Department",
+            "Value": "Training"
+          }
+        ]
+      }
+    },
+    "PrivateSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "myVPC"
+        },
+        "CidrBlock": "192.168.1.0/24",
+        "AvailabilityZone": "us-west-2a",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Private Subnet"
+          }
+        ]
+      }
+    },
+    "PublicSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "myVPC"
+        },
+        "CidrBlock": "192.168.2.0/24",
+        "AvailabilityZone": "us-west-2b",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Public Subnet"
+          }
+        ]
+      }
+    },
+    "7AMInternetGateway": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "7AMInternetGateway"
+          }
+        ]
+      }
+    },
+    "AttachInternetGateway": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "myVPC"
+        },
+        "InternetGatewayId": {
+          "Ref": "7AMInternetGateway"
+        }
+      }
+    },
+    "PublicSubnetsRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "myVPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "PublicSubnetsRouteTable"
+          }
+        ]
+      }
+    },
+    "RouteToInternetGW" : {
+         "Type" : "AWS::EC2::Route",
+         "DependsOn" : "AttachInternetGateway",
+         "Properties" : {
+            "RouteTableId" : { "Ref" : "PublicSubnetsRouteTable" },
+            "DestinationCidrBlock" : "0.0.0.0/0",
+            "GatewayId" : { "Ref" : "7AMInternetGateway" }
+         }
+      },
+      "PublicSubnetRouteTableAssociation" : {
+         "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+         "Properties" : {
+            "SubnetId" : { "Ref" : "PublicSubnet" },
+            "RouteTableId" : { "Ref" : "PublicSubnetsRouteTable" }
+         }
+      },
+      "Webserver1" : {
+        "Type" : "AWS::EC2::Instance",
+        "Properties" : {
+          "ImageId" :"ami-4836a428",
+          "InstanceType":{"Ref":"InstanceType"},
+          "KeyName" : {"Ref":"KeyFile"},
+          "SubnetId" : {"Ref":"PublicSubnet"},
+          "Tags": [
+            {
+              "Key": "Name",
+              "Value": "Webserver1"
+            }
+          ]
+        }
+      }
+  }
+}
